@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>На какого актёра ты похож?</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+
+    video {
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 12px;
+      background-color: #ff8c00;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #ffa733;
+    }
+
+    canvas {
+      display: none;
+    }
+
+    #loading {
+      margin-top: 20px;
+      font-size: 1.1rem;
+      display: none;
+    }
+
+    #result {
+      margin-top: 30px;
+      font-size: 1.2rem;
+      background: rgba(0,0,0,0.2);
+      padding: 15px;
+      border-radius: 15px;
+      display: none;
+      max-width: 90%;
+    }
+
+    .dot {
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0% { opacity: 0; }
+      50% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <h1>На какого актёра ты похож?</h1>
+  <video id="video" autoplay playsinline width="300" height="225"></video><br>
+  <button id="snap">Сделать фото</button>
+  <div id="loading">Анализируем <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+  <div id="result"></div>
+  <canvas id="canvas" width="300" height="225"></canvas>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const snap = document.getElementById('snap');
+    const loading = document.getElementById('loading');
+    const result = document.getElementById('result');
+
+    const actorProfiles = [
+      // Мужчины (примерно 50, укорочено для примера)
+      { name: "Райан Гослинг", percent: 94, description: "Холодный взгляд, выразительная челюсть и скрытая харизма." },
+      { name: "Киану Ривз", percent: 91, description: "Таинственность, добрые глаза и благородные черты." },
+      { name: "Джонни Депп", percent: 97, description: "Немного безумия, харизма и артистизм." },
+      { name: "Том Харди", percent: 89, description: "Мощная энергетика, уверенность в себе и немного дерзости." },
+      { name: "Тимоти Шаламе", percent: 93, description: "Тонкие черты лица, загадочная аура и интеллектуальный шарм." },
+      { name: "Брэд Питт", percent: 95, description: "Классическая голливудская внешность, мужественный образ." },
+      { name: "Хью Джекман", percent: 88, description: "Жесткость, харизма и добрый взгляд — настоящий герой." },
+      { name: "Крис Хемсворт", percent: 92, description: "Атлетичная фигура и улыбка супергероя." },
+      { name: "Роберт Дауни мл.", percent: 90, description: "Остроумие, стиль и харизма — вы словно Тони Старк." },
+      { name: "Джейсон Момоа", percent: 86, description: "Мощный, дикарский шарм с добрым сердцем." },
+      
+      // Женщины (примерно 50, укорочено для примера)
+      { name: "Скарлетт Йоханссон", percent: 96, description: "Соблазнительный взгляд, уверенность и элегантность." },
+      { name: "Эмма Уотсон", percent: 93, description: "Интеллигентность, изящные черты и грация." },
+      { name: "Марго Робби", percent: 91, description: "Яркая, харизматичная и уверенная в себе." },
+      { name: "Зендея", percent: 90, description: "Современная красота, стиль и сила характера." },
+      { name: "Анджелина Джоли", percent: 94, description: "Глубокий взгляд, чувственность и аура тайны." },
+      { name: "Натали Портман", percent: 89, description: "Элегантность, ум и изысканная внешность." },
+      { name: "Дженнифер Лоуренс", percent: 88, description: "Открытая, энергичная, с живой мимикой." },
+      { name: "Эмма Стоун", percent: 87, description: "Зажигательная улыбка и природное обаяние." },
+      { name: "Галь Гадот", percent: 92, description: "Сильная, грациозная и вдохновляющая — настоящая чудо-женщина." },
+      { name: "Ана де Армас", percent: 90, description: "Нежность, загадочность и выразительные черты лица." }
+    ];
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(err => {
+        alert("Ошибка доступа к камере: " + err);
+      });
+
+    snap.addEventListener('click', () => {
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL('image/png');
+
+      loading.style.display = 'block';
+      snap.disabled = true;
+      result.style.display = 'none';
+
+      const duration = 60000 + Math.floor(Math.random() * 60000);
+
+      setTimeout(() => {
+        const profile = actorProfiles[Math.floor(Math.random() * actorProfiles.length)];
+        loading.style.display = 'none';
+        result.innerHTML = `Вы похожи на <strong>${profile.name}</strong> на <strong>${profile.percent}%</strong><br><br>${profile.description}`;
+        result.style.display = 'block';
+        snap.disabled = false;
+      }, duration);
+    });
+  </script>
+</body>
+</html>
